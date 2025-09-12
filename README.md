@@ -1,100 +1,142 @@
-# Air_Quality_Forecasting
-Air Quality Classification
-# Problem Statement
+## Air Quality Forecasting using Machine Learning
+### Overview
 
-Air pollution (PM2.5, NO₂) harms health, causing respiratory and cardiovascular diseases.
+This project builds a machine learning model to predict air quality status (Good vs Poor) using environmental features like temperature, humidity, and location. We applied data preprocessing, class balancing, model training, hyperparameter tuning, and deployed the solution in a simple Streamlit app for end-user interaction.
 
-People need clear AQI categories (Good, Moderate, Unhealthy, Hazardous) instead of raw pollutant numbers.
+## 1. Problem Statement
 
-Lack of timely forecasts limits prevention and response.
+Air pollution poses significant health risks. Forecasting air quality can help citizens, policymakers, and environmental agencies take timely action.
 
-Goal: Use ML classification to predict AQI categories for early warnings and better public health decisions.
+Goal: Predict whether air quality will be Good or Poor.
 
-# Overview
+Type of Task: Classification.
 
-This project applies machine learning classification models to predict Air Quality Index (AQI) categories (Good, Moderate, Unhealthy, Hazardous) based on real-world pollutant data.
+Beneficiaries: Local communities, environmental agencies, healthcare organizations.
 
-We use the OpenAQ API to collect air quality measurements (PM2.5, NO₂) and transform them into health-relevant classes. The goal is to provide an early-warning tool for citizens and health authorities.
+## 2. Data Collection & Understanding
+### Dataset Overview
 
- # Objectives
+Source: Public dataset from Kaggle on air quality monitoring.
 
-Collect real-time air quality data (PM2.5, NO₂) using the OpenAQ API.
+Shape: ~719,000 rows × 8 columns.
 
-Engineer features (time of day, lags, rolling averages).
+Granularity: Each row represents a single sensor measurement at a given timestamp and location.
 
-Train classification models (Logistic Regression, Random Forest, Gradient Boosting).
+Columns:
 
-Evaluate performance with Accuracy, Precision, Recall, F1-score.
+sensor_id → Unique ID of the sensor device.
 
-Provide insights into which features influence AQI most.
+sensor_type → Type of pollutant/measurement (e.g., PM2.5, PM10, temperature, humidity).
 
- # Data Sources
+location → Numeric identifier for monitoring station (~70+ unique).
 
- OpenAQ API
- → global open-source air quality data.
+lat / lon → Geographical coordinates of the station.
 
-Pollutants:
+timestamp → Date and time of the measurement.
 
-PM2.5 → fine inhalable particles (≤2.5 μm).
+value_type → Category of measurement (e.g., “P1”, “P2”, “humidity”, “temperature”).
 
-NO₂ → Nitrogen Dioxide from vehicles & industry.
+value → Recorded measurement (continuous).
+.
 
-(Optional) Weather features: temperature, humidity, wind speed.
+## 3. Data Preprocessing
 
-# Methods
+Missing Values: Imputed using median strategy.
 
-Data Collection → pull hourly/daily PM2.5 & NO₂ values from OpenAQ.
+Feature Scaling:
 
-Preprocessing →
+StandardScaler for humidity.
 
-Handle missing values (linear interpolation).
+RobustScaler for temperature (less sensitive to outliers).
 
-Resample to consistent time steps.
+Categorical Encoding: One-Hot Encoding for location.
 
-Create features: lag values, rolling averages, time encoding.
+Class Imbalance: Handled with SMOTE (Synthetic Minority Oversampling Technique).
 
-Convert pollutant readings into AQI categories.
+Train-Test Split: 80/20 stratified split.
 
-# Modeling →
+## 4. Modeling
 
-Logistic Regression (baseline).
+We tested multiple algorithms (Logistic Regression, Decision Trees, Random Forest, Gradient Boosting).
 
-Decision Tree, Random Forest.
+Chosen Model: Gradient Boosting Classifier (best F1-score).
 
-Gradient Boosted Trees (optional).
+Hyperparameter Tuning: Performed with RandomizedSearchCV (learning_rate, n_estimators, max_depth, etc.).
 
-Handle class imbalance (SMOTE / class weights).
+## 5. Evaluation
 
-Evaluation →
+Metrics Used: Accuracy, Precision, Recall, F1-score.
 
-Metrics: Accuracy, Precision, Recall, F1-score.
+Confusion Matrix: Shows misclassification distribution.
 
-Confusion Matrix → shows which AQI categories are misclassified.
+Learning Curves: Checked for bias/variance tradeoff.
 
-Feature Importance → interpret model decisions.
+Validation Curves: Analyzed model sensitivity to hyperparameters (n_estimators, max_depth, learning_rate).
 
- 
+Key Results
 
-# Future Work
+Training Accuracy: ~99%
 
-Add weather forecast data for better predictions.
+Test Accuracy: ~99%
 
-Expand to more pollutants (O₃, CO, SO₂).
+However, recall for the minority class (“Poor” Air Quality) is lower, indicating the class imbalance challenge.
 
-Build a Streamlit dashboard for real-time city-level alerts.
+## 6. Error Analysis
 
-Extend to multiple cities (Nairobi, Kampala, London).
+The model performs very well on the “Good” class but struggles with rare “Poor” cases.
 
-# Tech Stack
+Errors mainly occur in locations with very few “Poor” readings.
 
-Python (pandas, numpy, scikit-learn, matplotlib, seaborn).
+## Possible solutions:
 
-OpenAQ API → data source.
+Collect more “Poor” air quality samples.
 
-ML Models: Logistic Regression, Decision Tree, Random Forest, Gradient Boosting.
+Apply anomaly detection models.
 
-Visualization: matplotlib, seaborn.
+Use cost-sensitive learning to penalize misclassifying “Poor” cases.
 
-(Optional) Streamlit for dashboard deployment.
+## 7. Model Interpretation
 
-Air Quality Forecasting with Machine Learning
+Feature Importance:
+
+Temperature and humidity are the strongest predictors.
+
+Certain locations (urban hotspots) contribute more to predictions.
+
+Business Meaning:
+
+Higher temperature + high particulate readings correlate with poor air quality.
+
+Helps policymakers focus on pollution-heavy locations.
+
+## 8. Deployment
+
+A Streamlit web app was developed to make predictions.
+Features:
+
+User inputs temperature and humidity.
+
+Predicts whether air quality is Good or Poor.
+
+Displays probability score (e.g., “There’s a 78% chance of Poor Air Quality”).
+
+CSV upload supported for batch predictions.
+
+
+## 9. Conclusion & Future Work
+
+✅ Achieved high accuracy but need to improve recall for Poor Air Quality cases.
+
+✅ Built an interpretable Gradient Boosting model.
+
+✅ Deployed using Streamlit for practical use.
+
+### Future Work:
+
+Collect more balanced data (especially Poor cases).
+
+Try ensemble models (XGBoost, LightGBM, CatBoost).
+
+Deploy as an API for integration into dashboards or IoT sensors.
+
+
