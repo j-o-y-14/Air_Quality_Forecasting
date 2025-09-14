@@ -1,65 +1,132 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import pydeck as pdk
 
-
-# Load Model and Preprocessor
-
+# =========================
+# Load Model & Preprocessor
+# =========================
 model = joblib.load("gradient_boosting_model.pkl")
 preprocessor = joblib.load("preprocessor.pkl")
 
+# =========================
+# Location Data
+# =========================
+location_df = pd.DataFrame({
+    "location_number": [7, 18, 27, 28, 29, 30, 31, 34, 37, 41, 51, 59, 60, 61, 63, 67, 68, 69, 70],
+    "location_name": [
+        "Downtown", "Airport", "Industrial Area", "Parkside", "Uptown",
+        "Harbor", "University", "Suburb East", "Suburb West", "Market",
+        "Station", "Mall", "Residential North", "Residential South",
+        "Hilltop", "Lakeview", "Riverside", "Old Town", "New Town"
+    ],
+    "latitude": [-1.290, -1.295, -1.285, -1.292, -1.298, -1.290, -1.287, -1.300, -1.280, -1.275, -1.270, -1.265, -1.262, -1.265, -1.260, -1.250, -1.376, -1.245, -1.240],
+    "longitude": [36.777, 36.780, 36.785, 36.790, 36.795, 36.777, 36.780, 36.785, 36.790, 36.795, 36.800, 36.805, 36.810, 36.815, 36.820, 36.825, 36.929, 36.830, 36.835]
+})
 
+# Mapping: Name -> location code
+location_options = {row["location_name"]: f"location_{row['location_number']}" for _, row in location_df.iterrows()}
+
+# =========================
 # Streamlit UI
-
-st.set_page_config(page_title="Air Quality Predictor", layout="centered")
-
+# =========================
 st.title("🌍 Air Quality Prediction App")
-st.markdown("Enter the input values below to predict **Air Quality Status**.")
+st.write("Enter environmental conditions to predict if the air quality is Healthy or Unhealthy.")
 
+# Input fields
+humidity = st.number_input("Humidity (%)", min_value=0.0, max_value=100.0, value=50.0)
+temperature = st.number_input("Temperature (°C)", min_value=-10.0, max_value=50.0, value=25.0)
+hour = st.slider("Hour of the Day", 0, 23, 12)
+location_name = st.selectbox("Select Location", options=list(location_options.keys()))
+location = location_options[location_name]
 
-# Input Form
+# =========================
+# Prepare Input Data & Predict
+# =========================
+if st.button("Predict"):
+    input_data = pd.DataFrame([{
+        "humidity": humidity,
+        "temperature": temperature,
+        "hour": hour,
+        "location": location
+    }])
 
-with st.form("prediction_form"):
-    temperature = st.number_input("🌡️ Temperature", value=25.0)
-    humidity = st.number_input("💧 Humidity", value=50.0)
+    # Ensure input_data has correct columns and order
+    input_data = input_data.reindex(columns=preprocessor.feature_names_in_, fill_value=0)
 
-    # Example: let user pick location
-    location = st.selectbox("📍 Location", [f"location_{i}" for i in range(1, 71)])
+    # Transform using preprocessor
+    input_processed = preprocessor.transform(input_data)
 
-    submitted = st.form_submit_button("Predict")
+    # Predict
+    prediction = model.predict(input_processed)[0]
 
-
-# Make Prediction
-
-if submitted:
-    # Build input dataframe
-    new_data = pd.DataFrame([[temperature, humidity, location]],
-                            columns=["temperature", "humidity", "location"])
-
-    # One-hot encode location column
-    new_data_encoded = pd.get_dummies(new_data, columns=["location"])
-
-    # Align with training features
-    all_features = preprocessor.feature_names_in_
-    new_data_encoded = new_data_encoded.reindex(columns=all_features, fill_value=0)
-
-    # Transform features
-    new_data_scaled = preprocessor.transform(new_data_encoded)
-
-    # Predict class and probability
-    prediction = model.predict(new_data_scaled)[0]
-    prob = model.predict_proba(new_data_scaled)[0]
-
-    # Display results
-    st.subheader("🔎 Prediction Result:")
+    # Output
     if prediction == 1:
-        st.error(f"❌ Poor Air Quality (Confidence: {prob[1]*100:.2f}%)")
+        st.success("✅ Air Quality is **Healthy**")
     else:
-        st.success(f"✅ Good Air Quality (Confidence: {prob[0]*100:.2f}%)")
+        st.error("⚠️ Air Quality is **Unhealthy**")
 
-    st.write("📊 Probability Scores:")
-    st.write({ "Good Air Quality": f"{prob[0]*100:.2f}%", 
-               "Poor Air Quality": f"{prob[1]*100:.2f}%" })
+# =========================
+# Location Guide Dropdown (Bottom)
+# =========================
+st.subheader("📌 Location Guide")
+selected_location = st.selectbox(
+    "Select a location to see details",
+    options=location_df["location_name"]
+)
+
+# Show details for the selected location
+loc_details = location_df[location_df["location_name"] == selected_location][
+    ["location_number", "location_name", "latitude", "longitude"]
+].rename(columns={
+    "location_number": "Location Code",
+    "location_name": "Location Name",
+    "latitude": "Latitude",
+    "longitude": "Longitude"
+})
+
+st.table(loc_details)
+
+# =========================
+# Map Visualization
+# =========================
+st.subheader("📍 Sensor Locations Map")
+
+# Color: selected → green, others → gray
+location_df["color"] = location_df["location_name"].apply(
+    lambda x: [0, 255, 0] if x == location_name else [150, 150, 150]
+)
+
+layer = pdk.Layer(
+    "ScatterplotLayer",
+    data=location_df,
+    get_position='[longitude, latitude]',
+    get_color='color',
+    get_radius=200,
+    pickable=True
+)
+
+view_state = pdk.ViewState(
+    latitude=location_df["latitude"].mean(),
+    longitude=location_df["longitude"].mean(),
+    zoom=11
+)
+
+r = pdk.Deck(
+    layers=[layer],
+    initial_view_state=view_state,
+    tooltip={"text": "{location_name}"}
+)
+
+st.pydeck_chart(r)
+
+
+
+
+
+
+
+
 
 
 
